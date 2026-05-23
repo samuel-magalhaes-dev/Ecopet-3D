@@ -1,12 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, ShoppingCart, Trash2, X, Check } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/components/CartContext";
+import { useAuth } from "@/components/AuthContext";
+import { CheckoutModal } from "@/components/CheckoutModal";
 import filamentImg from "@/assets/filament-product.jpg";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const weights = [
   { label: "250g", value: 250, price: 29.75 },
@@ -18,8 +22,11 @@ const Comprar = () => {
   const [selectedWeight, setSelectedWeight] = useState(2);
   const [quantity, setQuantity] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
   const { items, addItem, removeItem, updateQuantity, clearCart, total: cartTotal, itemCount } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const current = weights[selectedWeight];
   const total = current.price * quantity;
@@ -27,7 +34,18 @@ const Comprar = () => {
   const handleAddToCart = () => {
     addItem({ weight: current.label, weightValue: current.value, price: current.price }, quantity);
     setAddedFeedback(true);
+    toast.success(`Filamento ${current.label} adicionado ao carrinho!`);
     setTimeout(() => setAddedFeedback(false), 2000);
+  };
+
+  const handleCheckout = () => {
+    if (!isAuthenticated) {
+      toast.error("Faça login para finalizar a compra");
+      navigate("/login", { state: { from: "/comprar" } });
+      return;
+    }
+    setCartOpen(false);
+    setCheckoutOpen(true);
   };
 
   return (
@@ -57,7 +75,7 @@ const Comprar = () => {
                     Filamento 3D Reciclado
                   </h1>
                   <p className="text-muted-foreground mt-3 leading-relaxed">
-                    Filamento PET reciclado de alta qualidade para impressoras 3D. Produzido a partir de garrafas PET 
+                    Filamento PET reciclado de alta qualidade para impressoras 3D. Produzido a partir de garrafas PET
                     coletadas e processadas com tecnologia de ponta. Compatível com a maioria das impressoras FDM.
                   </p>
                 </div>
@@ -220,7 +238,10 @@ const Comprar = () => {
                     <span>Total</span>
                     <span className="text-primary">R$ {cartTotal.toFixed(2).replace(".", ",")}</span>
                   </div>
-                  <Button className="w-full gradient-cta text-primary-foreground rounded-full font-semibold shadow-eco hover:scale-[1.02] transition-transform">
+                  <Button
+                    onClick={handleCheckout}
+                    className="w-full gradient-cta text-primary-foreground rounded-full font-semibold shadow-eco hover:scale-[1.02] transition-transform"
+                  >
                     Finalizar Compra
                   </Button>
                   <button onClick={clearCart} className="w-full text-sm text-muted-foreground hover:text-destructive transition-colors">
@@ -232,6 +253,16 @@ const Comprar = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        items={items}
+        total={cartTotal}
+        tipo="avulso"
+        onSuccess={clearCart}
+      />
 
       <Footer />
     </div>
